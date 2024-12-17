@@ -18,6 +18,14 @@ enum Commands {
         no_notes: u8,
     },
     Today {},
+    From {
+        #[arg(short, long)]
+        year: Option<u16>,
+        #[arg(short, long)]
+        month: Option<u8>,
+        #[arg(short, long)]
+        day: Option<u8>,
+    },
 }
 
 impl Commands {
@@ -31,6 +39,11 @@ impl Commands {
             }
             Commands::Today {} => {
                 let notes = db.get_todays_notes().await?;
+                notes.print();
+                Ok(())
+            }
+            Commands::From { year, month, day  } => {
+                let notes = db.get_notes_from(year, month, day).await?;
                 notes.print();
                 Ok(())
             }
