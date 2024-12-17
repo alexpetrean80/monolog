@@ -25,8 +25,7 @@ Follow these steps to install and build monolog:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/alexpetrean80/monolog.git
-cd monolog
+cargo install --git https://github.com/alexpetrean80/monolog.git
 ```
 
 ### 2. Install Dependencies
@@ -105,12 +104,3 @@ Example:
 ```bash
 monolog last 5
 ```
-
-## Database
-
-- The application uses a SQLite database file named monolog.db, which is created automatically in the working directory on the first run.
-
-- Notes are stored in the table notes with the following fields:
-  `id`: Auto-incrementing primary key.
-  `text`: The note content.
-  `date`: Timestamp of when the note was added.
