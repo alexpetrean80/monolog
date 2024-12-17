@@ -44,7 +44,7 @@ pub mod note {
                 for n in notes_per_day {
                     let hour = n.date.time().hour();
                     let minute = n.date.time().minute();
-                    let k = format!("{}:{}", hour, minute);
+                    let k = format!("{:02}:{:02}", hour, minute);
 
                     per_time
                         .entry(k)
@@ -125,5 +125,95 @@ pub mod db {
                 .fetch_all(&self.pool)
                 .await
         }
+
+        pub async fn get_notes_from(
+            &self,
+            year: &Option<u16>,
+            month: &Option<u8>,
+            day: &Option<u8>,
+        ) -> Result<Vec<Note>, sqlx::Error> {
+            use chrono::{Datelike, Local};
+            let now = Local::now();
+            let current_year = now.year() as u16;
+            let current_month = now.month() as u8;
+        
+            let mut final_year = *year;
+            let mut final_month = *month;
+            let final_day = *day;
+        
+            if final_day.is_some() {
+                if final_month.is_none() {
+                    final_month = Some(current_month);
+                }
+                if final_year.is_none() {
+                    final_year = Some(current_year);
+                }
+            }
+        
+            if final_month.is_some() && final_year.is_none() {
+                final_year = Some(current_year);
+            }
+        
+            let query = match (final_year, final_month, final_day) {
+                (None, None, None) => "SELECT * FROM notes".to_string(),
+        
+                (Some(y), None, None) => format!(
+                    "SELECT * FROM notes
+                     WHERE date >= DATETIME('{:04}-01-01', 'start of day')
+                       AND date < DATETIME('{:04}-01-01', 'start of day', '+1 year');",
+                    y, y
+                ),
+        
+                (Some(y), Some(m), None) => format!(
+                    "SELECT * FROM notes
+                     WHERE date >= DATETIME('{:04}-{:02}-01', 'start of day')
+                       AND date < DATETIME('{:04}-{:02}-01', 'start of day', '+1 month');",
+                    y, m, y, m
+                ),
+        
+                (Some(y), Some(m), Some(d)) => format!(
+                    "SELECT * FROM notes
+                     WHERE date >= DATETIME('{:04}-{:02}-{:02}', 'start of day')
+                       AND date < DATETIME('{:04}-{:02}-{:02}', 'start of day', '+1 day');",
+                    y, m, d, y, m, d
+                ),
+        
+                (None, Some(m), d) => {
+                    let y = current_year;
+                    if let Some(day) = d {
+                        format!(
+                            "SELECT * FROM notes
+                             WHERE date >= DATETIME('{:04}-{:02}-{:02}', 'start of day')
+                               AND date < DATETIME('{:04}-{:02}-{:02}', 'start of day', '+1 day');",
+                            y, m, day, y, m, day
+                        )
+                    } else {
+                        format!(
+                            "SELECT * FROM notes
+                             WHERE date >= DATETIME('{:04}-{:02}-01', 'start of day')
+                               AND date < DATETIME('{:04}-{:02}-01', 'start of day', '+1 month');",
+                            y, m, y, m
+                        )
+                    }
+                }
+        
+                (Some(y), None, Some(d)) => {
+                    let m = current_month;
+                    format!(
+                        "SELECT * FROM notes
+                         WHERE date >= DATETIME('{:04}-{:02}-{:02}', 'start of day')
+                           AND date < DATETIME('{:04}-{:02}-{:02}', 'start of day', '+1 day');",
+                        y, m, d, y, m, d
+                    )
+                }
+        
+                _ => "SELECT * FROM notes".to_string(),
+            };
+        
+            sqlx::query_as::<_, Note>(&query)
+                .fetch_all(&self.pool)
+                .await
+        }
+        
     }
 }
